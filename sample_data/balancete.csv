@@ -1,0 +1,5 @@
+data;conta_contabil;descricao_conta;saldo_anterior;debito;credito;movimentacao;saldo_final
+31/01/2026;1.1.1.001;Caixa;1000,00;500,00;100,00;400,00;1400,00
+31/01/2026;2.1.1.001;Fornecedores;300,00;0,00;100,00;-100,00;200,00
+31/01/2026;3.1.1.001;Receita de Bilheteria;0,00;0,00;5000,00;-5000,00;-5000,00
+31/01/2026;3.2.1.001;Custos de Futebol;0,00;1200,00;0,00;1200,00;1200,00

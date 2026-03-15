@@ -1,0 +1,5 @@
+conta_contabil;descricao_conta;Classe Conta;natureza;chave_balanco;chave_dre;aceita_movimento;nivel;conta_pai
+1.1.1.001;Caixa;Ativo Circulante;1;ATIVO_CIRCULANTE;;sim;3;1.1.1
+2.1.1.001;Fornecedores;Passivo Circulante;2;PASSIVO_CIRCULANTE;;sim;3;2.1.1
+3.1.1.001;Receita de Bilheteria;Resultado;3.1;;RECEITA_BILHETERIA;sim;3;3.1.1
+3.2.1.001;Custos de Futebol;Resultado;3.2.1;;CUSTOS_FUTEBOL;sim;3;3.2.1
