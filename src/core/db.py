@@ -5,8 +5,18 @@ from src.core.config import get_settings
 
 settings = get_settings()
 
+
+def _normalize_db_url(url: str) -> str:
+    # Normaliza qualquer formato para postgresql+psycopg2://
+    for prefix in ("postgresql+psycopg://", "postgresql+psycopg2://", "postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            base = url[len(prefix):]
+            return f"postgresql+psycopg2://{base}"
+    return url
+
+
 engine = create_engine(
-    settings.DATABASE_URL.replace("postgresql+psycopg://", "postgresql+psycopg2://"),
+    _normalize_db_url(settings.DATABASE_URL),
     pool_pre_ping=True,
     future=True,
 )
