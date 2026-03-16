@@ -1,8 +1,8 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     senha: str
 
 
@@ -12,8 +12,10 @@ class TokenResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: int
     nome: str
-    email: EmailStr
+    email: str
     perfil: str
     ativo: bool
