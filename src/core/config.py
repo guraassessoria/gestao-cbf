@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     @classmethod
     def split_cors_origins(cls, value):
         if isinstance(value, str):
+            value = value.strip()
+            # Se vier como JSON array ex: ["url1","url2"]
+            if value.startswith("["):
+                import json
+                try:
+                    return json.loads(value)
+                except Exception:
+                    pass
+            # Se vier como lista separada por virgula ex: url1,url2
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
