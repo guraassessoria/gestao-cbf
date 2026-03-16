@@ -1,7 +1,5 @@
 from functools import lru_cache
-from typing import List
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,23 +20,19 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_NAME: str = "Administrador"
     DEFAULT_ADMIN_PASSWORD: str = "TroqueEssaSenha123!"
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # Armazenado como string para evitar problemas de parse do pydantic-settings
+    CORS_ORIGINS_STR: str = "http://localhost:3000,http://127.0.0.1:3000"
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def split_cors_origins(cls, value):
-        if isinstance(value, str):
-            value = value.strip()
-            # Se vier como JSON array ex: ["url1","url2"]
-            if value.startswith("["):
-                import json
-                try:
-                    return json.loads(value)
-                except Exception:
-                    pass
-            # Se vier como lista separada por virgula ex: url1,url2
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+    @property
+    def CORS_ORIGINS(self) -> list:
+        value = self.CORS_ORIGINS_STR.strip()
+        if value.startswith("["):
+            import json
+            try:
+                return json.loads(value)
+            except Exception:
+                pass
+        return [item.strip() for item in value.split(",") if item.strip()]
 
 
 @lru_cache
