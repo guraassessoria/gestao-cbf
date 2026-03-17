@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_PASSWORD: str = "TroqueEssaSenha123!"
 
     # Armazenado como string para evitar problemas de parse do pydantic-settings
-    CORS_ORIGINS_STR: str = "http://localhost:3000,http://127.0.0.1:3000"
+    CORS_ORIGINS_STR: str = "http://localhost:3000,http://127.0.0.1:3000,https://gestao-cbf.vercel.app"
 
     @property
     def CORS_ORIGINS(self) -> list:

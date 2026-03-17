@@ -1,12 +1,20 @@
-from sqlalchemy import select
+from sqlalchemy import select, inspect
 from sqlalchemy.orm import Session
 
 from src.core.security import get_password_hash
 from src.models.entities import EstruturaTipo, Usuario
+from src.models.base import Base
 from src.core.config import get_settings
+from src.core.db import engine
 
 
 def ensure_seed_data(db: Session) -> None:
+    # Em ambiente serverless (Vercel), lifespan pode nao executar.
+    # Cria tabelas se nao existirem.
+    insp = inspect(engine)
+    if not insp.has_table("usuarios"):
+        Base.metadata.create_all(bind=engine)
+
     settings = get_settings()
 
     structure_types = [

@@ -24,7 +24,14 @@ export default function LoginPage() {
       await login({ email, senha })
       navigate('/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Credenciais inválidas')
+      const detail = err.response?.data?.detail
+      if (detail) {
+        setError(detail)
+      } else if (err.request) {
+        setError('Servidor indisponível. Tente novamente.')
+      } else {
+        setError('Erro inesperado. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
