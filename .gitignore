@@ -5,3 +5,4 @@ __pycache__/
 .vercel
 .pytest_cache/
 public/
+.env*.local
