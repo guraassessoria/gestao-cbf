@@ -1,21 +1,15 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
+  "buildCommand": "cd frontend && npm install && npm run build && cp -r dist ../public",
   "functions": {
     "api/index.py": {
-      "runtime": "@vercel/python@4.5.0"
+      "includeFiles": "public/**"
     }
   },
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/api/index.py"
     }
   ]
 }

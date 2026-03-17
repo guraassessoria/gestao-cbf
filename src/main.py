@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from src.core.config import get_settings
 from src.core.db import Base, engine, SessionLocal
@@ -9,6 +11,8 @@ from src.routers import auth, competencias, dashboard, estruturas, health, proce
 from src.services.bootstrap import ensure_seed_data
 
 settings = get_settings()
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "public"
 
 
 @asynccontextmanager
@@ -44,3 +48,18 @@ app.include_router(estruturas.router, prefix="/api")
 app.include_router(competencias.router, prefix="/api")
 app.include_router(processamentos.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+
+
+# Serve frontend SPA (static files built into public/)
+if STATIC_DIR.is_dir():
+    _static_root = STATIC_DIR.resolve()
+
+    @app.get("/{path:path}")
+    async def serve_frontend(path: str):
+        file = (STATIC_DIR / path).resolve()
+        if file.is_file() and str(file).startswith(str(_static_root)):
+            return FileResponse(str(file))
+        index = STATIC_DIR / "index.html"
+        if index.is_file():
+            return FileResponse(str(index), media_type="text/html")
+        return {"detail": "Not Found"}
