@@ -6,9 +6,7 @@ from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
 try:
-    from src.main import app as _inner_app
-    app = FastAPI()
-    app.mount("/api", _inner_app)
+    from src.main import app
 except Exception:
     _err = traceback.format_exc()
     app = FastAPI()
