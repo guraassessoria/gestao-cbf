@@ -62,6 +62,11 @@ def _get_processamento(db: Session, processamento_id: int) -> Processamento:
     return processamento
 
 
+@router.get("", response_model=list[ProcessamentoOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+def listar_processamentos(db: Session = Depends(get_db)):
+    return db.scalars(select(Processamento).order_by(Processamento.criado_em.desc())).all()
+
+
 @router.post("", response_model=ProcessamentoOut, dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL"))])
 def criar_processamento(
     payload: ProcessamentoCreate,
