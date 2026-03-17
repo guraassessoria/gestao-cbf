@@ -5,13 +5,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
-_startup_error = None
-
 try:
-    from src.main import app
+    from src.main import app as _inner_app
+    app = FastAPI()
+    app.mount("/api", _inner_app)
 except Exception:
-    _startup_error = traceback.format_exc()
-    _err = _startup_error or "Unknown startup error"
+    _err = traceback.format_exc()
     app = FastAPI()
 
     @app.get("/{path:path}")
