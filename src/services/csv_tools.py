@@ -48,7 +48,9 @@ def _format_xlsx_cell(value) -> str:
     if isinstance(value, date):
         return value.strftime("%d/%m/%Y")
     if isinstance(value, float):
-        d = Decimal(repr(value))
+        # round antes de converter para evitar lixo de ponto flutuante do Excel
+        # (ex: 400.00000000000006 vindo de fórmulas =debito-credito)
+        d = Decimal(repr(round(value, 2)))
         s = str(d)
         return s.replace(".", ",") if "." in s else s
     if isinstance(value, int):
