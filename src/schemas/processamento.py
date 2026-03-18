@@ -56,3 +56,40 @@ class ResultadoBalanceteClassificadoOut(ORMModel):
     chave_balanco: str | None
     chave_dre: str | None
     saldo_final: Decimal
+
+
+# ── Schemas hierárquicos ──────────────────────────────────────────────────────
+
+class LinhaHierarquicaDreOut(BaseModel):
+    cod: str
+    descricao: str
+    nivel: int
+    cod_pai: str | None
+    chave_dre: str
+    valor: Decimal
+    is_sintetica: bool
+
+
+class LinhaHierarquicaBalancoOut(BaseModel):
+    cod: str
+    descricao: str
+    nivel: int
+    cod_pai: str | None
+    chave_balanco: str
+    valor: Decimal
+    is_sintetica: bool
+    lado: str | None
+
+
+class ResultadoBalancoHierarquicoOut(BaseModel):
+    ativo: list[LinhaHierarquicaBalancoOut]
+    passivo_pl: list[LinhaHierarquicaBalancoOut]
+
+class ResultadoBalanceteClassificadoOut(ORMModel):
+    id: int
+    conta_contabil: str
+    descricao_conta: str
+    natureza: str
+    chave_balanco: str | None
+    chave_dre: str | None
+    saldo_final: Decimal

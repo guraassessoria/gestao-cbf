@@ -19,7 +19,130 @@ from src.models.entities import (
 from src.models.enums import Severidade, StatusProcessamento
 
 
-def processar(db: Session, processamento: Processamento) -> dict:
+def _compute_hierarquia(itens, get_chave_fn, result_by_chave: dict) -> tuple[dict, dict]:
+    """Retorna (cod_to_valor, is_sintetica).
+
+    - Folhas: valor vem de result_by_chave via chave do item.
+    - Sintéticas: valor = soma dos filhos diretos (bottom-up por nível).
+    """
+    children: dict[str, list[str]] = defaultdict(list)
+    for item in itens:
+        if item.cod_pai:
+            children[item.cod_pai].append(item.cod)
+
+    is_sintetica = {item.cod: bool(children[item.cod]) for item in itens}
+
+    cod_to_valor: dict[str, Decimal] = {
+        item.cod: result_by_chave.get(get_chave_fn(item), Decimal("0"))
+        for item in itens
+    }
+
+    # Propaga bottom-up: do maior nível para o menor
+    for item in sorted(itens, key=lambda x: x.nivel, reverse=True):
+        if is_sintetica[item.cod]:
+            cod_to_valor[item.cod] = sum(
+                (cod_to_valor.get(c, Decimal("0")) for c in children[item.cod]),
+                Decimal("0"),
+            )
+
+    return cod_to_valor, is_sintetica
+
+
+def _resolve_lado(item, cod_to_item: dict, cache: dict) -> str:
+    """Determina ATIVO ou PASSIVO_PL para um item do balanço.
+
+    Prioridade:
+    1. Campo `lado` explícito no item.
+    2. Para nós raiz (sem cod_pai): infere pelo conteúdo de chave_balanco/descricao.
+    3. Herda do ancestral raiz.
+    """
+    if item.cod in cache:
+        return cache[item.cod]
+
+    if item.lado:  # definido no CSV
+        result = item.lado.upper()
+    elif not item.cod_pai:  # raiz
+        texto = ((item.chave_balanco or "") + " " + (item.descricao or "")).upper()
+        result = "ATIVO" if "ATIVO" in texto else "PASSIVO_PL"
+    else:  # herda do pai
+        pai = cod_to_item.get(item.cod_pai)
+        result = _resolve_lado(pai, cod_to_item, cache) if pai else "PASSIVO_PL"
+
+    cache[item.cod] = result
+    return result
+
+
+def resultado_dre_hierarquico(db: Session, processamento: Processamento) -> list[dict]:
+    itens = db.scalars(
+        select(EstruturaDreItem)
+        .where(EstruturaDreItem.estrutura_versao_id == processamento.versao_dre_id)
+        .order_by(EstruturaDreItem.id)
+    ).all()
+
+    result_by_chave = {
+        r.chave_dre: r.valor
+        for r in db.scalars(
+            select(ResultadoDre).where(ResultadoDre.processamento_id == processamento.id)
+        ).all()
+    }
+
+    cod_to_valor, is_sintetica = _compute_hierarquia(
+        itens, lambda i: i.chave_dre, result_by_chave
+    )
+
+    return [
+        {
+            "cod": item.cod,
+            "descricao": item.descricao_dre,
+            "nivel": item.nivel,
+            "cod_pai": item.cod_pai,
+            "chave_dre": item.chave_dre,
+            "valor": cod_to_valor[item.cod],
+            "is_sintetica": is_sintetica[item.cod],
+        }
+        for item in itens
+    ]
+
+
+def resultado_balanco_hierarquico(db: Session, processamento: Processamento) -> dict:
+    itens = db.scalars(
+        select(EstruturaBalancoItem)
+        .where(EstruturaBalancoItem.estrutura_versao_id == processamento.versao_balanco_id)
+        .order_by(EstruturaBalancoItem.id)
+    ).all()
+
+    result_by_chave = {
+        r.chave_balanco: r.valor
+        for r in db.scalars(
+            select(ResultadoBalanco).where(ResultadoBalanco.processamento_id == processamento.id)
+        ).all()
+    }
+
+    cod_to_valor, is_sintetica = _compute_hierarquia(
+        itens, lambda i: i.chave_balanco, result_by_chave
+    )
+
+    cod_to_item = {item.cod: item for item in itens}
+    lado_cache: dict[str, str] = {}
+
+    linhas = [
+        {
+            "cod": item.cod,
+            "descricao": item.descricao,
+            "nivel": item.nivel,
+            "cod_pai": item.cod_pai,
+            "chave_balanco": item.chave_balanco,
+            "valor": cod_to_valor[item.cod],
+            "is_sintetica": is_sintetica[item.cod],
+            "lado": _resolve_lado(item, cod_to_item, lado_cache),
+        }
+        for item in itens
+    ]
+
+    return {
+        "ativo": [l for l in linhas if l["lado"] == "ATIVO"],
+        "passivo_pl": [l for l in linhas if l["lado"] == "PASSIVO_PL"],
+    }
     erros = db.scalar(
         select(func.count(ValidacaoLog.id)).where(
             ValidacaoLog.processamento_id == processamento.id,

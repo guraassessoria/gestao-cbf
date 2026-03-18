@@ -94,6 +94,7 @@ class EstruturaBalancoItem(Base):
     nivel: Mapped[int] = mapped_column(Integer, nullable=False)
     cod_pai: Mapped[str | None] = mapped_column(String(60))
     chave_balanco: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    lado: Mapped[str | None] = mapped_column(String(20))  # ATIVO | PASSIVO_PL
 
     __table_args__ = (
         UniqueConstraint("estrutura_versao_id", "cod", name="uq_balanco_cod"),

@@ -1,4 +1,4 @@
-from sqlalchemy import select, inspect
+from sqlalchemy import select, inspect, text
 from sqlalchemy.orm import Session
 
 from src.core.security import get_password_hash
@@ -8,7 +8,14 @@ from src.core.config import get_settings
 from src.core.db import Base, engine
 
 
-def ensure_seed_data(db: Session) -> None:
+def _migrate_db() -> None:
+    """Aplica migrações incrementais seguras (ADD COLUMN IF NOT EXISTS)."""
+    with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE estrutura_balanco_item ADD COLUMN IF NOT EXISTS lado VARCHAR(20)"
+        ))
+        conn.commit()
+    _migrate_db()
     # Em ambiente serverless (Vercel), lifespan pode nao executar.
     # Cria tabelas se nao existirem.
     insp = inspect(engine)

@@ -120,6 +120,7 @@ def publicar_nova_versao(db: Session, tipo_codigo: str, versao: str, observacao:
                     nivel=int(row.get("nivel", "1")),
                     cod_pai=row.get("cod_pai") or None,
                     chave_balanco=row.get("chave_balanco", ""),
+                    lado=row.get("lado") or None,
                 )
             )
     else:

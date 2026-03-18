@@ -25,9 +25,11 @@ from src.schemas.processamento import (
     ResultadoBalanceteClassificadoOut,
     ResultadoBalancoOut,
     ResultadoDreOut,
+    ResultadoBalancoHierarquicoOut,
+    LinhaHierarquicaDreOut,
     ValidacaoLogOut,
 )
-from src.services.processamento_service import processar
+from src.services.processamento_service import processar, resultado_balanco_hierarquico, resultado_dre_hierarquico
 from src.services.validacao_service import validar_processamento
 
 router = APIRouter(prefix="/processamentos", tags=["processamentos"])
@@ -196,16 +198,16 @@ def listar_validacoes(processamento_id: int, db: Session = Depends(get_db)):
     return db.scalars(select(ValidacaoLog).where(ValidacaoLog.processamento_id == processamento_id).order_by(ValidacaoLog.id)).all()
 
 
-@router.get("/{processamento_id}/resultado/balanco", response_model=list[ResultadoBalancoOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+@router.get("/{processamento_id}/resultado/balanco", response_model=ResultadoBalancoHierarquicoOut, dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
 def resultado_balanco(processamento_id: int, db: Session = Depends(get_db)):
-    _get_processamento(db, processamento_id)
-    return db.scalars(select(ResultadoBalanco).where(ResultadoBalanco.processamento_id == processamento_id).order_by(ResultadoBalanco.id)).all()
+    processamento = _get_processamento(db, processamento_id)
+    return resultado_balanco_hierarquico(db, processamento)
 
 
-@router.get("/{processamento_id}/resultado/dre", response_model=list[ResultadoDreOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+@router.get("/{processamento_id}/resultado/dre", response_model=list[LinhaHierarquicaDreOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
 def resultado_dre(processamento_id: int, db: Session = Depends(get_db)):
-    _get_processamento(db, processamento_id)
-    return db.scalars(select(ResultadoDre).where(ResultadoDre.processamento_id == processamento_id).order_by(ResultadoDre.id)).all()
+    processamento = _get_processamento(db, processamento_id)
+    return resultado_dre_hierarquico(db, processamento)
 
 
 @router.get("/{processamento_id}/resultado/balancete-classificado", response_model=list[ResultadoBalanceteClassificadoOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
