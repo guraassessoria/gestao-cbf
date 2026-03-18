@@ -10,6 +10,7 @@ from src.models.entities import (
     EstruturaVersao,
     PlanoContasItem,
 )
+from src.models.enums import StatusEstruturaVersao, TipoEstrutura
 from src.services.csv_tools import parse_semicolon_csv
 
 
@@ -41,7 +42,7 @@ def publicar_nova_versao(db: Session, tipo_codigo: str, versao: str, observacao:
     nova_versao = EstruturaVersao(
         estrutura_tipo_id=tipo.id,
         versao=versao,
-        status="EM_PRODUCAO",
+        status=StatusEstruturaVersao.EM_PRODUCAO,
         publicada_em=datetime.now(timezone.utc),
         criada_por_id=user_id,
         observacao=observacao,
@@ -52,10 +53,10 @@ def publicar_nova_versao(db: Session, tipo_codigo: str, versao: str, observacao:
     db.execute(
         update(EstruturaVersao)
         .where(EstruturaVersao.estrutura_tipo_id == tipo.id, EstruturaVersao.id != nova_versao.id)
-        .values(status="SUBSTITUIDA")
+        .values(status=StatusEstruturaVersao.SUBSTITUIDA)
     )
 
-    if tipo_codigo == "PLANO_CONTAS":
+    if tipo_codigo == TipoEstrutura.PLANO_CONTAS:
         contas = set()
         for idx, row in enumerate(rows, start=2):
             conta = row.get("conta_contabil", "")
@@ -82,7 +83,7 @@ def publicar_nova_versao(db: Session, tipo_codigo: str, versao: str, observacao:
                 )
             )
 
-    elif tipo_codigo == "DRE":
+    elif tipo_codigo == TipoEstrutura.DRE:
         codes = set()
         for idx, row in enumerate(rows, start=2):
             cod = row.get("cod", "")
@@ -102,7 +103,7 @@ def publicar_nova_versao(db: Session, tipo_codigo: str, versao: str, observacao:
                     chave_dre=row.get("chave_dre", ""),
                 )
             )
-    elif tipo_codigo == "BALANCO":
+    elif tipo_codigo == TipoEstrutura.BALANCO:
         codes = set()
         for idx, row in enumerate(rows, start=2):
             cod = row.get("cod", "")

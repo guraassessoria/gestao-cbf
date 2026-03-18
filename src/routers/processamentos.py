@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 
 from src.core.db import get_db
 from src.core.deps import get_current_user, require_roles
+from src.models.enums import StatusCompetencia, StatusEstruturaVersao, StatusProcessamento, TipoArquivo
+from src.services.csv_tools import parse_xlsx_to_csv_text
 from src.models.entities import (
     ArquivoCarga,
     Competencia,
@@ -33,6 +35,12 @@ router = APIRouter(prefix="/processamentos", tags=["processamentos"])
 
 def _decode_upload(file: UploadFile) -> str:
     raw = file.file.read()
+    fname = (file.filename or "").lower()
+    if fname.endswith(".xlsx") or raw[:4] == b"PK\x03\x04":
+        try:
+            return parse_xlsx_to_csv_text(raw)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Erro ao ler arquivo xlsx: {exc}")
     for encoding in ("utf-8-sig", "latin-1"):
         try:
             return raw.decode(encoding)
@@ -47,7 +55,7 @@ def _estrutura_em_producao(db: Session, codigo: str):
         raise HTTPException(status_code=400, detail=f"Tipo estrutural ausente: {codigo}")
     versao = db.scalar(
         select(EstruturaVersao)
-        .where(EstruturaVersao.estrutura_tipo_id == tipo.id, EstruturaVersao.status == "EM_PRODUCAO")
+        .where(EstruturaVersao.estrutura_tipo_id == tipo.id, EstruturaVersao.status == StatusEstruturaVersao.EM_PRODUCAO)
         .order_by(EstruturaVersao.publicada_em.desc())
     )
     if not versao:
@@ -71,10 +79,12 @@ def criar_processamento(
     competencia = db.get(Competencia, payload.competencia_id)
     if not competencia:
         raise HTTPException(status_code=404, detail="Competência não encontrada")
+    if competencia.status == StatusCompetencia.FECHADA:
+        raise HTTPException(status_code=400, detail="Não é possível criar processamento para uma competência fechada")
 
     proc = Processamento(
         competencia_id=payload.competencia_id,
-        status="CRIADO",
+        status=StatusProcessamento.CRIADO,
         versao_plano_contas_id=_estrutura_em_producao(db, "PLANO_CONTAS").id,
         versao_dre_id=_estrutura_em_producao(db, "DRE").id,
         versao_balanco_id=_estrutura_em_producao(db, "BALANCO").id,
@@ -99,7 +109,7 @@ def reprocessar(
 
     proc = Processamento(
         competencia_id=original.competencia_id,
-        status="CRIADO",
+        status=StatusProcessamento.CRIADO,
         motivo_reprocessamento=payload.motivo,
         versao_plano_contas_id=original.versao_plano_contas_id,
         versao_dre_id=original.versao_dre_id,
@@ -126,13 +136,13 @@ def upload_balancete(
     processamento = _get_processamento(db, processamento_id)
     arquivo_obj = ArquivoCarga(
         processamento_id=processamento.id,
-        tipo_arquivo="BALANCETE",
+        tipo_arquivo=TipoArquivo.BALANCETE,
         nome_arquivo=arquivo.filename or "balancete.csv",
         conteudo_texto=_decode_upload(arquivo),
         status="RECEBIDO",
     )
     db.add(arquivo_obj)
-    processamento.status = "ARQUIVOS_RECEBIDOS"
+    processamento.status = StatusProcessamento.ARQUIVOS_RECEBIDOS
     db.commit()
     return {"message": "Balancete enviado com sucesso"}
 
@@ -146,13 +156,13 @@ def upload_custos(
     processamento = _get_processamento(db, processamento_id)
     arquivo_obj = ArquivoCarga(
         processamento_id=processamento.id,
-        tipo_arquivo="CUSTOS_FUTEBOL",
+        tipo_arquivo=TipoArquivo.CUSTOS_FUTEBOL,
         nome_arquivo=arquivo.filename or "custos_futebol.csv",
         conteudo_texto=_decode_upload(arquivo),
         status="RECEBIDO",
     )
     db.add(arquivo_obj)
-    processamento.status = "ARQUIVOS_RECEBIDOS"
+    processamento.status = StatusProcessamento.ARQUIVOS_RECEBIDOS
     db.commit()
     return {"message": "Custos com futebol enviados com sucesso"}
 

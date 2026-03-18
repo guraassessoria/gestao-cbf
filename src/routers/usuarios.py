@@ -6,6 +6,7 @@ from src.core.db import get_db
 from src.core.deps import require_roles
 from src.core.security import get_password_hash
 from src.models.entities import Usuario
+from src.models.enums import Perfil
 from src.schemas.usuario import UsuarioCreate, UsuarioOut, UsuarioUpdate
 
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -18,8 +19,6 @@ def listar_usuarios(db: Session = Depends(get_db)):
 
 @router.post("", response_model=UsuarioOut, dependencies=[Depends(require_roles("ADMIN"))])
 def criar_usuario(payload: UsuarioCreate, db: Session = Depends(get_db)):
-    if payload.perfil not in {"ADMIN", "OPERACIONAL", "CONSULTA"}:
-        raise HTTPException(status_code=400, detail="Perfil inválido")
     exists = db.scalar(select(Usuario).where(Usuario.email == payload.email))
     if exists:
         raise HTTPException(status_code=400, detail="E-mail já cadastrado")
@@ -47,8 +46,6 @@ def atualizar_usuario(usuario_id: int, payload: UsuarioUpdate, db: Session = Dep
     if payload.senha is not None:
         user.senha_hash = get_password_hash(payload.senha)
     if payload.perfil is not None:
-        if payload.perfil not in {"ADMIN", "OPERACIONAL", "CONSULTA"}:
-            raise HTTPException(status_code=400, detail="Perfil inválido")
         user.perfil = payload.perfil
     if payload.ativo is not None:
         user.ativo = payload.ativo

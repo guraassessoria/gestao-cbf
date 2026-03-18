@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from pydantic import BaseModel
 
+from src.models.enums import Severidade, StatusProcessamento, TipoArquivo
 from src.schemas.common import ORMModel
 
 
@@ -16,7 +17,7 @@ class ReprocessamentoCreate(BaseModel):
 class ProcessamentoOut(ORMModel):
     id: int
     competencia_id: int
-    status: str
+    status: StatusProcessamento
     motivo_reprocessamento: str | None
     versao_plano_contas_id: int
     versao_dre_id: int
@@ -26,8 +27,8 @@ class ProcessamentoOut(ORMModel):
 
 class ValidacaoLogOut(ORMModel):
     id: int
-    arquivo_tipo: str
-    severidade: str
+    arquivo_tipo: TipoArquivo
+    severidade: Severidade
     linha: int | None
     campo: str | None
     mensagem: str

@@ -12,6 +12,7 @@ from src.models.entities import (
     Processamento,
     ValidacaoLog,
 )
+from src.models.enums import Severidade, StatusArquivo, StatusProcessamento, TipoArquivo
 from src.services.csv_tools import parse_date_br, parse_decimal, parse_semicolon_csv
 
 
@@ -21,7 +22,7 @@ BALANCETE_HEADERS = {
 CUSTOS_HEADERS = {"data", "descricao", "sub_descricao", "valor", "chave_dre"}
 
 
-def _add_log(db: Session, processamento_id: int, arquivo_tipo: str, severidade: str, mensagem: str, linha: int | None = None, campo: str | None = None):
+def _add_log(db: Session, processamento_id: int, arquivo_tipo: TipoArquivo, severidade: Severidade, mensagem: str, linha: int | None = None, campo: str | None = None):
     db.add(
         ValidacaoLog(
             processamento_id=processamento_id,
@@ -45,11 +46,11 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
 
     has_error = False
 
-    if "BALANCETE" not in por_tipo:
-        _add_log(db, processamento.id, "BALANCETE", "ERRO", "Arquivo de balancete não enviado")
+    if TipoArquivo.BALANCETE not in por_tipo:
+        _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Arquivo de balancete não enviado")
         has_error = True
-    if "CUSTOS_FUTEBOL" not in por_tipo:
-        _add_log(db, processamento.id, "CUSTOS_FUTEBOL", "ERRO", "Arquivo de custos com futebol não enviado")
+    if TipoArquivo.CUSTOS_FUTEBOL not in por_tipo:
+        _add_log(db, processamento.id, TipoArquivo.CUSTOS_FUTEBOL, Severidade.ERRO, "Arquivo de custos com futebol não enviado")
         has_error = True
 
     plano_contas = {
@@ -65,14 +66,14 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
         ).all()
     }
 
-    if "BALANCETE" in por_tipo:
-        arquivo = por_tipo["BALANCETE"]
+    if TipoArquivo.BALANCETE in por_tipo:
+        arquivo = por_tipo[TipoArquivo.BALANCETE]
         rows = parse_semicolon_csv(arquivo.conteudo_texto)
         if not rows:
-            _add_log(db, processamento.id, "BALANCETE", "ERRO", "Arquivo de balancete sem dados")
+            _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Arquivo de balancete sem dados")
             has_error = True
         if rows and not BALANCETE_HEADERS.issubset(rows[0].keys()):
-            _add_log(db, processamento.id, "BALANCETE", "ERRO", "Cabeçalhos obrigatórios ausentes")
+            _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Cabeçalhos obrigatórios ausentes")
             has_error = True
 
         for idx, row in enumerate(rows, start=2):
@@ -88,27 +89,27 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
 
                 if conta not in plano_contas:
                     has_error = True
-                    _add_log(db, processamento.id, "BALANCETE", "ERRO", "Conta não existe no plano congelado", idx, "conta_contabil")
+                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Conta não existe no plano congelado", idx, "conta_contabil")
                     continue
 
                 plano_item = plano_contas[conta]
                 if not plano_item.aceita_movimento:
                     has_error = True
-                    _add_log(db, processamento.id, "BALANCETE", "ERRO", "Conta não aceita movimento", idx, "conta_contabil")
+                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Conta não aceita movimento", idx, "conta_contabil")
                     continue
 
                 if movimentacao != (debito - credito):
                     has_error = True
-                    _add_log(db, processamento.id, "BALANCETE", "ERRO", "Movimentação divergente de débito-crédito", idx, "movimentacao")
+                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Movimentação divergente de débito-crédito", idx, "movimentacao")
                     continue
 
                 if saldo_final != (saldo_anterior + movimentacao):
                     has_error = True
-                    _add_log(db, processamento.id, "BALANCETE", "ERRO", "Saldo final divergente", idx, "saldo_final")
+                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Saldo final divergente", idx, "saldo_final")
                     continue
 
                 if plano_item.natureza == "1" and saldo_final < Decimal("0"):
-                    _add_log(db, processamento.id, "BALANCETE", "ALERTA", "Saldo final negativo em conta de ativo", idx, "saldo_final")
+                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ALERTA, "Saldo final negativo em conta de ativo", idx, "saldo_final")
 
                 db.add(
                     BalanceteItem(
@@ -125,16 +126,16 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
                 )
             except Exception as exc:
                 has_error = True
-                _add_log(db, processamento.id, "BALANCETE", "ERRO", str(exc), idx)
+                _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, str(exc), idx)
 
-    if "CUSTOS_FUTEBOL" in por_tipo:
-        arquivo = por_tipo["CUSTOS_FUTEBOL"]
+    if TipoArquivo.CUSTOS_FUTEBOL in por_tipo:
+        arquivo = por_tipo[TipoArquivo.CUSTOS_FUTEBOL]
         rows = parse_semicolon_csv(arquivo.conteudo_texto)
         if not rows:
-            _add_log(db, processamento.id, "CUSTOS_FUTEBOL", "ERRO", "Arquivo de custos sem dados")
+            _add_log(db, processamento.id, TipoArquivo.CUSTOS_FUTEBOL, Severidade.ERRO, "Arquivo de custos sem dados")
             has_error = True
         if rows and not CUSTOS_HEADERS.issubset(rows[0].keys()):
-            _add_log(db, processamento.id, "CUSTOS_FUTEBOL", "ERRO", "Cabeçalhos obrigatórios ausentes")
+            _add_log(db, processamento.id, TipoArquivo.CUSTOS_FUTEBOL, Severidade.ERRO, "Cabeçalhos obrigatórios ausentes")
             has_error = True
 
         for idx, row in enumerate(rows, start=2):
@@ -162,24 +163,24 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
                 )
             except Exception as exc:
                 has_error = True
-                _add_log(db, processamento.id, "CUSTOS_FUTEBOL", "ERRO", str(exc), idx)
+                _add_log(db, processamento.id, TipoArquivo.CUSTOS_FUTEBOL, Severidade.ERRO, str(exc), idx)
 
-    processamento.status = "VALIDADO_COM_ERROS" if has_error else "VALIDADO"
+    processamento.status = StatusProcessamento.VALIDADO_COM_ERROS if has_error else StatusProcessamento.VALIDADO
     for arquivo in arquivos:
-        arquivo.status = "INVÁLIDO" if has_error else "VÁLIDO"
+        arquivo.status = StatusArquivo.INVALIDO if has_error else StatusArquivo.VALIDO
 
     db.commit()
 
     errors = db.scalar(
         select(func.count(ValidacaoLog.id)).where(
             ValidacaoLog.processamento_id == processamento.id,
-            ValidacaoLog.severidade == "ERRO",
+            ValidacaoLog.severidade == Severidade.ERRO,
         )
     )
     alerts = db.scalar(
         select(func.count(ValidacaoLog.id)).where(
             ValidacaoLog.processamento_id == processamento.id,
-            ValidacaoLog.severidade == "ALERTA",
+            ValidacaoLog.severidade == Severidade.ALERTA,
         )
     )
     return {"status": processamento.status, "errors": errors or 0, "alerts": alerts or 0}

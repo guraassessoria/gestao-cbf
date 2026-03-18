@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.core.security import get_password_hash
 from src.models.entities import EstruturaTipo, Usuario
+from src.models.enums import Perfil
 from src.core.config import get_settings
 
 
@@ -26,7 +27,7 @@ def ensure_seed_data(db: Session) -> None:
                 nome=settings.DEFAULT_ADMIN_NAME,
                 email=settings.DEFAULT_ADMIN_EMAIL,
                 senha_hash=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
-                perfil="ADMIN",
+                perfil=Perfil.ADMIN,
                 ativo=True,
             )
         )

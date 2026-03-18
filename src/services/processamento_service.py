@@ -16,13 +16,14 @@ from src.models.entities import (
     ResultadoDre,
     ValidacaoLog,
 )
+from src.models.enums import Severidade, StatusProcessamento
 
 
 def processar(db: Session, processamento: Processamento) -> dict:
     erros = db.scalar(
         select(func.count(ValidacaoLog.id)).where(
             ValidacaoLog.processamento_id == processamento.id,
-            ValidacaoLog.severidade == "ERRO",
+            ValidacaoLog.severidade == Severidade.ERRO,
         )
     )
     if erros and erros > 0:
@@ -101,7 +102,7 @@ def processar(db: Session, processamento: Processamento) -> dict:
             )
         )
 
-    processamento.status = "PROCESSADO"
+    processamento.status = StatusProcessamento.PROCESSADO
     db.commit()
     return {
         "status": processamento.status,

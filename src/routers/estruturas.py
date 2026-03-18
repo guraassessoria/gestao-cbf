@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.core.db import get_db
 from src.core.deps import get_current_user, require_roles
 from src.models.entities import EstruturaTipo, EstruturaVersao, Usuario
+from src.models.enums import StatusEstruturaVersao, TipoEstrutura
 from src.schemas.estrutura import EstruturaVersaoOut, EstruturasEmProducaoResponse
 from src.services.estrutura_service import publicar_nova_versao
 
@@ -37,7 +38,7 @@ def estruturas_em_producao(db: Session = Depends(get_db)):
             return None
         return db.scalar(
             select(EstruturaVersao)
-            .where(EstruturaVersao.estrutura_tipo_id == tipo_id, EstruturaVersao.status == "EM_PRODUCAO")
+            .where(EstruturaVersao.estrutura_tipo_id == tipo_id, EstruturaVersao.status == StatusEstruturaVersao.EM_PRODUCAO)
             .order_by(EstruturaVersao.publicada_em.desc())
         )
 

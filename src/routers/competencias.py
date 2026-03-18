@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from src.core.db import get_db
 from src.core.deps import get_current_user, require_roles
 from src.models.entities import Competencia, Usuario
+from src.models.enums import StatusCompetencia
 from src.schemas.competencia import CompetenciaCreate, CompetenciaOut
 
 router = APIRouter(prefix="/competencias", tags=["competencias"])
@@ -27,7 +28,7 @@ def criar_competencia(
     existing = db.scalar(select(Competencia).where(Competencia.referencia == payload.referencia))
     if existing:
         raise HTTPException(status_code=400, detail="Competência já existe")
-    comp = Competencia(referencia=payload.referencia, status="ABERTA", criada_por_id=current_user.id)
+    comp = Competencia(referencia=payload.referencia, status=StatusCompetencia.ABERTA, criada_por_id=current_user.id)
     db.add(comp)
     db.commit()
     db.refresh(comp)
@@ -39,4 +40,30 @@ def obter_competencia(competencia_id: int, db: Session = Depends(get_db)):
     comp = db.get(Competencia, competencia_id)
     if not comp:
         raise HTTPException(status_code=404, detail="Competência não encontrada")
+    return comp
+
+
+@router.patch("/{competencia_id}/fechar", response_model=CompetenciaOut, dependencies=[Depends(require_roles("ADMIN"))])
+def fechar_competencia(competencia_id: int, db: Session = Depends(get_db)):
+    comp = db.get(Competencia, competencia_id)
+    if not comp:
+        raise HTTPException(status_code=404, detail="Competência não encontrada")
+    if comp.status == StatusCompetencia.FECHADA:
+        raise HTTPException(status_code=400, detail="Competência já está fechada")
+    comp.status = StatusCompetencia.FECHADA
+    db.commit()
+    db.refresh(comp)
+    return comp
+
+
+@router.patch("/{competencia_id}/reabrir", response_model=CompetenciaOut, dependencies=[Depends(require_roles("ADMIN"))])
+def reabrir_competencia(competencia_id: int, db: Session = Depends(get_db)):
+    comp = db.get(Competencia, competencia_id)
+    if not comp:
+        raise HTTPException(status_code=404, detail="Competência não encontrada")
+    if comp.status == StatusCompetencia.ABERTA:
+        raise HTTPException(status_code=400, detail="Competência já está aberta")
+    comp.status = StatusCompetencia.ABERTA
+    db.commit()
+    db.refresh(comp)
     return comp
