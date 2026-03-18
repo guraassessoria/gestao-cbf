@@ -143,6 +143,9 @@ def resultado_balanco_hierarquico(db: Session, processamento: Processamento) -> 
         "ativo": [l for l in linhas if l["lado"] == "ATIVO"],
         "passivo_pl": [l for l in linhas if l["lado"] == "PASSIVO_PL"],
     }
+
+
+def processar(db: Session, processamento: Processamento) -> dict:
     erros = db.scalar(
         select(func.count(ValidacaoLog.id)).where(
             ValidacaoLog.processamento_id == processamento.id,
