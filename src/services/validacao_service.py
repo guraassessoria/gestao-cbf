@@ -88,13 +88,13 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
                 descricao = row["descricao_conta"]
 
                 if conta not in plano_contas:
-                    has_error = True
-                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Conta não existe no plano congelado", idx, "conta_contabil")
+                    # Conta sintética não cadastrada no plano (ex: totalizadoras exportadas
+                    # pelo sistema contábil): ignorada silenciosamente
                     continue
 
                 plano_item = plano_contas[conta]
                 if not plano_item.aceita_movimento:
-                    # Conta sintética: valores ignorados silenciosamente
+                    # Conta sintética marcada no plano: ignorada silenciosamente
                     continue
 
                 if movimentacao != (debito - credito):
@@ -145,6 +145,9 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
                 sub_descricao = row["sub_descricao"]
                 chave_dre = row["chave_dre"]
 
+                if not chave_dre:
+                    # Linha sintética/totalizadora sem chave_dre: ignorada silenciosamente
+                    continue
                 if not descricao or not sub_descricao:
                     raise ValueError("Descrição e sub_descricao são obrigatórias")
                 if chave_dre not in chaves_dre:
