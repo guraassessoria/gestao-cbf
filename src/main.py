@@ -37,10 +37,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router)
-app.include_router(auth.router)
-app.include_router(usuarios.router)
-app.include_router(estruturas.router)
-app.include_router(competencias.router)
-app.include_router(processamentos.router)
-app.include_router(dashboard.router)
+app.include_router(health.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(usuarios.router, prefix="/api")
+app.include_router(estruturas.router, prefix="/api")
+app.include_router(competencias.router, prefix="/api")
+app.include_router(processamentos.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")

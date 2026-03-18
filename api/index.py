@@ -5,22 +5,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 
-_startup_error = None
-_app = None
-
 try:
-    from src.main import app as _app
+    from src.main import app  # noqa: F401 – Vercel detects `app` as ASGI entry
 except Exception:
-    _startup_error = traceback.format_exc()
+    _err = traceback.format_exc()
+    app = FastAPI()
 
-if _app is not None:
-    handler = _app
-else:
-    _err = _startup_error or "Unknown startup error"
-    diag = FastAPI()
-
-    @diag.get("/{path:path}")
+    @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
     async def catch_all(path: str):
         return PlainTextResponse(f"STARTUP ERROR:\n{_err}", status_code=500)
-
-    handler = diag
