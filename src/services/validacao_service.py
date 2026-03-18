@@ -79,11 +79,11 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
         for idx, row in enumerate(rows, start=2):
             try:
                 data = parse_date_br(row["data"])
-                saldo_anterior = parse_decimal(row["saldo_anterior"])
-                debito = parse_decimal(row["debito"])
-                credito = parse_decimal(row["credito"])
-                movimentacao = parse_decimal(row["movimentacao"])
-                saldo_final = parse_decimal(row["saldo_final"])
+                saldo_anterior = round(parse_decimal(row["saldo_anterior"]), 2)
+                debito = round(parse_decimal(row["debito"]), 2)
+                credito = round(parse_decimal(row["credito"]), 2)
+                movimentacao = round(parse_decimal(row["movimentacao"]), 2)
+                saldo_final = round(parse_decimal(row["saldo_final"]), 2)
                 conta = row["conta_contabil"]
                 descricao = row["descricao_conta"]
 
@@ -98,13 +98,29 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
                     continue
 
                 if movimentacao != (debito - credito):
+                    esperado = debito - credito
                     has_error = True
-                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Movimentação divergente de débito-crédito", idx, "movimentacao")
+                    _add_log(
+                        db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO,
+                        f"Movimentação divergente de débito-crédito | "
+                        f"conta: {conta} | "
+                        f"débito: {debito} | crédito: {credito} | "
+                        f"movimentação informada: {movimentacao} | esperado: {esperado}",
+                        idx, "movimentacao",
+                    )
                     continue
 
                 if saldo_final != (saldo_anterior + movimentacao):
+                    esperado = saldo_anterior + movimentacao
                     has_error = True
-                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Saldo final divergente", idx, "saldo_final")
+                    _add_log(
+                        db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO,
+                        f"Saldo final divergente | "
+                        f"conta: {conta} | "
+                        f"saldo_anterior: {saldo_anterior} | movimentação: {movimentacao} | "
+                        f"saldo_final informado: {saldo_final} | esperado: {esperado}",
+                        idx, "saldo_final",
+                    )
                     continue
 
                 if plano_item.natureza == "1" and saldo_final < Decimal("0"):
@@ -140,7 +156,7 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
         for idx, row in enumerate(rows, start=2):
             try:
                 data = parse_date_br(row["data"])
-                valor = parse_decimal(row["valor"])
+                valor = round(parse_decimal(row["valor"]), 2)
                 descricao = row["descricao"]
                 sub_descricao = row["sub_descricao"]
                 chave_dre = row["chave_dre"]
