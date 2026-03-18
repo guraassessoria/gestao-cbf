@@ -4,8 +4,9 @@ import api from '../lib/api'
 import type {
   Processamento,
   ValidacaoLog,
-  ResultadoBalanco,
-  ResultadoDre,
+  LinhaHierarquicaBalanco,
+  LinhaHierarquicaDre,
+  ResultadoBalancoHierarquico,
   ResultadoBalanceteClassificado,
   ArquivoCarga,
   ValidacaoResult,
@@ -38,8 +39,8 @@ export default function ProcessamentoDetailPage() {
 
   // Tab data
   const [validacoes, setValidacoes] = useState<ValidacaoLog[]>([])
-  const [balanco, setBalanco] = useState<ResultadoBalanco[]>([])
-  const [dre, setDre] = useState<ResultadoDre[]>([])
+  const [balanco, setBalanco] = useState<ResultadoBalancoHierarquico | null>(null)
+  const [dre, setDre] = useState<LinhaHierarquicaDre[]>([])
   const [classificado, setClassificado] = useState<ResultadoBalanceteClassificado[]>([])
 
   const loadProc = async () => {
@@ -66,9 +67,15 @@ export default function ProcessamentoDetailPage() {
     if (tab === 'validacoes') {
       api.get<ValidacaoLog[]>(`/processamentos/${id}/validacoes`).then((r) => setValidacoes(r.data))
     } else if (tab === 'balanco') {
-      api.get<ResultadoBalanco[]>(`/processamentos/${id}/resultado/balanco`).then((r) => setBalanco(r.data))
+      api
+        .get<ResultadoBalancoHierarquico>(`/processamentos/${id}/resultado/balanco/hierarquico`)
+        .then((r) => setBalanco(r.data))
+        .catch(() => setBalanco({ ativo: [], passivo_pl: [] }))
     } else if (tab === 'dre') {
-      api.get<ResultadoDre[]>(`/processamentos/${id}/resultado/dre`).then((r) => setDre(r.data))
+      api
+        .get<LinhaHierarquicaDre[]>(`/processamentos/${id}/resultado/dre/hierarquico`)
+        .then((r) => setDre(r.data))
+        .catch(() => setDre([]))
     } else if (tab === 'classificado') {
       api
         .get<ResultadoBalanceteClassificado[]>(`/processamentos/${id}/resultado/balancete-classificado`)
@@ -211,7 +218,7 @@ export default function ProcessamentoDetailPage() {
           <p className="mb-2 text-sm font-medium text-gray-700">1. Upload Balancete</p>
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx"
             disabled={actionLoading}
             onChange={(e) => {
               const f = e.target.files?.[0]
@@ -231,7 +238,7 @@ export default function ProcessamentoDetailPage() {
           <p className="mb-2 text-sm font-medium text-gray-700">2. Upload Custos Futebol</p>
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx"
             disabled={actionLoading}
             onChange={(e) => {
               const f = e.target.files?.[0]
@@ -412,69 +419,113 @@ export default function ProcessamentoDetailPage() {
           </div>
         )}
 
-        {tab === 'balanco' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-6 py-3">Chave Balanço</th>
-                  <th className="px-6 py-3">Descrição</th>
-                  <th className="px-6 py-3 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {balanco.map((b) => (
-                  <tr key={b.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 font-mono text-xs font-medium">{b.chave_balanco}</td>
-                    <td className="px-6 py-3">{b.descricao}</td>
-                    <td className="px-6 py-3 text-right font-mono">
-                      {Number(b.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                ))}
-                {balanco.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="px-6 py-8 text-center text-gray-400">
-                      Nenhum resultado de balanço. Processe os dados primeiro.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {tab === 'balanco' && (() => {
+          const fmt = (v: number) =>
+            Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 })
 
-        {tab === 'dre' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-6 py-3">Chave DRE</th>
-                  <th className="px-6 py-3">Descrição</th>
-                  <th className="px-6 py-3 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {dre.map((d) => (
-                  <tr key={d.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-3 font-mono text-xs font-medium">{d.chave_dre}</td>
-                    <td className="px-6 py-3">{d.descricao}</td>
-                    <td className="px-6 py-3 text-right font-mono">
-                      {Number(d.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </td>
-                  </tr>
+          const renderLado = (itens: LinhaHierarquicaBalanco[]) =>
+            itens.length === 0 ? (
+              <p className="py-6 text-center text-sm text-gray-400">Sem dados.</p>
+            ) : (
+              <div className="divide-y">
+                {itens.map((item) => (
+                  <div
+                    key={item.cod}
+                    style={{ paddingLeft: `${(item.nivel - 1) * 20}px` }}
+                    className={`flex items-baseline justify-between gap-4 px-4 py-2 text-sm ${
+                      item.is_sintetica
+                        ? 'bg-gray-50 font-semibold text-gray-900'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    <span className="min-w-0 truncate">{item.descricao}</span>
+                    <span className="shrink-0 font-mono tabular-nums">{fmt(item.valor)}</span>
+                  </div>
                 ))}
-                {dre.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="px-6 py-8 text-center text-gray-400">
-                      Nenhum resultado de DRE. Processe os dados primeiro.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </div>
+            )
+
+          const isEmpty = !balanco || (balanco.ativo.length === 0 && balanco.passivo_pl.length === 0)
+
+          if (isEmpty) {
+            return (
+              <div className="px-6 py-8 text-center text-gray-400">
+                Nenhum resultado de balanço. Processe os dados primeiro.
+              </div>
+            )
+          }
+
+          return (
+            <div className="grid grid-cols-1 divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+              <div>
+                <div className="border-b bg-gray-100 px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-600">
+                  Ativo
+                </div>
+                {renderLado(balanco!.ativo)}
+              </div>
+              <div>
+                <div className="border-b bg-gray-100 px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-600">
+                  Passivo e Patrimônio Líquido
+                </div>
+                {renderLado(balanco!.passivo_pl)}
+              </div>
+            </div>
+          )
+        })()}
+
+        {tab === 'dre' && (() => {
+          // Post-order: filhos aparecem antes do pai (totalizador ao final do grupo)
+          function drePostOrder(itens: LinhaHierarquicaDre[]): LinhaHierarquicaDre[] {
+            const byPai = new Map<string | null, LinhaHierarquicaDre[]>()
+            for (const item of itens) {
+              const key = item.cod_pai ?? null
+              if (!byPai.has(key)) byPai.set(key, [])
+              byPai.get(key)!.push(item)
+            }
+            const result: LinhaHierarquicaDre[] = []
+            function visit(pai: string | null) {
+              for (const child of byPai.get(pai) ?? []) {
+                visit(child.cod)
+                result.push(child)
+              }
+            }
+            visit(null)
+            return result
+          }
+
+          const ordenados = drePostOrder(dre)
+
+          return (
+            <div>
+              {ordenados.length === 0 ? (
+                <div className="px-6 py-8 text-center text-gray-400">
+                  Nenhum resultado de DRE. Processe os dados primeiro.
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {ordenados.map((item) => (
+                    <div
+                      key={item.cod}
+                      style={{ paddingLeft: `${(item.nivel - 1) * 20}px` }}
+                      className={`flex items-baseline justify-between gap-4 px-4 py-2 text-sm ${
+                        item.is_sintetica
+                          ? 'bg-gray-50 font-semibold text-gray-900'
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      <span className="min-w-0 truncate">
+                        {item.is_sintetica ? `(=) ${item.descricao}` : item.descricao}
+                      </span>
+                      <span className="shrink-0 font-mono tabular-nums">
+                        {Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {tab === 'classificado' && (
           <div className="overflow-x-auto">

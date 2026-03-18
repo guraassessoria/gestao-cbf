@@ -238,8 +238,28 @@ def resultado_resumo(processamento_id: int, db: Session = Depends(get_db)):
     }
 
 
-@router.get("/{processamento_id}/resultado/balanco", response_model=ResultadoBalancoHierarquicoOut, dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+@router.get("/{processamento_id}/resultado/balanco", response_model=list[ResultadoBalancoOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
 def resultado_balanco(processamento_id: int, db: Session = Depends(get_db)):
+    _get_processamento(db, processamento_id)
+    return db.scalars(
+        select(ResultadoBalanco)
+        .where(ResultadoBalanco.processamento_id == processamento_id)
+        .order_by(ResultadoBalanco.id)
+    ).all()
+
+
+@router.get("/{processamento_id}/resultado/dre", response_model=list[ResultadoDreOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+def resultado_dre(processamento_id: int, db: Session = Depends(get_db)):
+    _get_processamento(db, processamento_id)
+    return db.scalars(
+        select(ResultadoDre)
+        .where(ResultadoDre.processamento_id == processamento_id)
+        .order_by(ResultadoDre.id)
+    ).all()
+
+
+@router.get("/{processamento_id}/resultado/balanco/hierarquico", response_model=ResultadoBalancoHierarquicoOut, dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+def resultado_balanco_hierarquico_endpoint(processamento_id: int, db: Session = Depends(get_db)):
     processamento = _get_processamento(db, processamento_id)
     if processamento.status != StatusProcessamento.PROCESSADO:
         raise HTTPException(
@@ -249,8 +269,8 @@ def resultado_balanco(processamento_id: int, db: Session = Depends(get_db)):
     return resultado_balanco_hierarquico(db, processamento)
 
 
-@router.get("/{processamento_id}/resultado/dre", response_model=list[LinhaHierarquicaDreOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
-def resultado_dre(processamento_id: int, db: Session = Depends(get_db)):
+@router.get("/{processamento_id}/resultado/dre/hierarquico", response_model=list[LinhaHierarquicaDreOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+def resultado_dre_hierarquico_endpoint(processamento_id: int, db: Session = Depends(get_db)):
     processamento = _get_processamento(db, processamento_id)
     if processamento.status != StatusProcessamento.PROCESSADO:
         raise HTTPException(

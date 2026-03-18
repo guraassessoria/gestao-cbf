@@ -99,6 +99,32 @@ export interface ResultadoDre {
   valor: number
 }
 
+export interface LinhaHierarquicaBalanco {
+  cod: string
+  descricao: string
+  nivel: number
+  cod_pai: string | null
+  chave_balanco: string
+  valor: number
+  is_sintetica: boolean
+  lado: string | null
+}
+
+export interface LinhaHierarquicaDre {
+  cod: string
+  descricao: string
+  nivel: number
+  cod_pai: string | null
+  chave_dre: string
+  valor: number
+  is_sintetica: boolean
+}
+
+export interface ResultadoBalancoHierarquico {
+  ativo: LinhaHierarquicaBalanco[]
+  passivo_pl: LinhaHierarquicaBalanco[]
+}
+
 export interface ResultadoBalanceteClassificado {
   id: number
   conta_contabil: string
