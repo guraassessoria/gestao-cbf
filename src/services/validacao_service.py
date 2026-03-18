@@ -94,8 +94,7 @@ def validar_processamento(db: Session, processamento: Processamento) -> dict:
 
                 plano_item = plano_contas[conta]
                 if not plano_item.aceita_movimento:
-                    has_error = True
-                    _add_log(db, processamento.id, TipoArquivo.BALANCETE, Severidade.ERRO, "Conta não aceita movimento", idx, "conta_contabil")
+                    # Conta sintética: valores ignorados silenciosamente
                     continue
 
                 if movimentacao != (debito - credito):
