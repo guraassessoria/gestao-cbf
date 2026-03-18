@@ -15,7 +15,11 @@ def _migrate_db() -> None:
             "ALTER TABLE estrutura_balanco_item ADD COLUMN IF NOT EXISTS lado VARCHAR(20)"
         ))
         conn.commit()
+
+
+def ensure_seed_data(db: Session) -> None:
     _migrate_db()
+
     # Em ambiente serverless (Vercel), lifespan pode nao executar.
     # Cria tabelas se nao existirem.
     insp = inspect(engine)
