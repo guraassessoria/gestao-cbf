@@ -48,16 +48,6 @@ class ResultadoDreOut(ORMModel):
     valor: Decimal
 
 
-class ResultadoBalanceteClassificadoOut(ORMModel):
-    id: int
-    conta_contabil: str
-    descricao_conta: str
-    natureza: str
-    chave_balanco: str | None
-    chave_dre: str | None
-    saldo_final: Decimal
-
-
 # ── Schemas hierárquicos ──────────────────────────────────────────────────────
 
 class LinhaHierarquicaDreOut(BaseModel):

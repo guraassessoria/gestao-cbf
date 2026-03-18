@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from src.core.db import get_db
@@ -8,9 +8,12 @@ from src.models.enums import StatusCompetencia, StatusEstruturaVersao, StatusPro
 from src.services.csv_tools import parse_xlsx_to_csv_text
 from src.models.entities import (
     ArquivoCarga,
+    BalanceteItem,
     Competencia,
     EstruturaTipo,
     EstruturaVersao,
+    EstruturaBalancoItem,
+    EstruturaDreItem,
     Processamento,
     ResultadoBalanco,
     ResultadoBalanceteClassificado,
@@ -198,15 +201,62 @@ def listar_validacoes(processamento_id: int, db: Session = Depends(get_db)):
     return db.scalars(select(ValidacaoLog).where(ValidacaoLog.processamento_id == processamento_id).order_by(ValidacaoLog.id)).all()
 
 
+@router.get("/{processamento_id}/resultado/resumo", dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
+def resultado_resumo(processamento_id: int, db: Session = Depends(get_db)):
+    """Diagnóstico: mostra contadores das tabelas para verificar se dados foram gerados."""
+    processamento = _get_processamento(db, processamento_id)
+    return {
+        "processamento_id": processamento_id,
+        "status": processamento.status,
+        "versao_balanco_id": processamento.versao_balanco_id,
+        "versao_dre_id": processamento.versao_dre_id,
+        "total_estrutura_balanco_itens": db.scalar(
+            select(func.count(EstruturaBalancoItem.id)).where(
+                EstruturaBalancoItem.estrutura_versao_id == processamento.versao_balanco_id
+            )
+        ),
+        "total_estrutura_dre_itens": db.scalar(
+            select(func.count(EstruturaDreItem.id)).where(
+                EstruturaDreItem.estrutura_versao_id == processamento.versao_dre_id
+            )
+        ),
+        "total_resultado_balanco": db.scalar(
+            select(func.count(ResultadoBalanco.id)).where(
+                ResultadoBalanco.processamento_id == processamento_id
+            )
+        ),
+        "total_resultado_dre": db.scalar(
+            select(func.count(ResultadoDre.id)).where(
+                ResultadoDre.processamento_id == processamento_id
+            )
+        ),
+        "total_balancete_itens": db.scalar(
+            select(func.count(BalanceteItem.id)).where(
+                BalanceteItem.processamento_id == processamento_id
+            )
+        ),
+    }
+
+
 @router.get("/{processamento_id}/resultado/balanco", response_model=ResultadoBalancoHierarquicoOut, dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
 def resultado_balanco(processamento_id: int, db: Session = Depends(get_db)):
     processamento = _get_processamento(db, processamento_id)
+    if processamento.status != StatusProcessamento.PROCESSADO:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Processamento ainda não foi concluído. Status atual: {processamento.status}",
+        )
     return resultado_balanco_hierarquico(db, processamento)
 
 
 @router.get("/{processamento_id}/resultado/dre", response_model=list[LinhaHierarquicaDreOut], dependencies=[Depends(require_roles("ADMIN", "OPERACIONAL", "CONSULTA"))])
 def resultado_dre(processamento_id: int, db: Session = Depends(get_db)):
     processamento = _get_processamento(db, processamento_id)
+    if processamento.status != StatusProcessamento.PROCESSADO:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Processamento ainda não foi concluído. Status atual: {processamento.status}",
+        )
     return resultado_dre_hierarquico(db, processamento)
 
 

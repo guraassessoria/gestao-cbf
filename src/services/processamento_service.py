@@ -23,7 +23,7 @@ def _compute_hierarquia(itens, get_chave_fn, result_by_chave: dict) -> tuple[dic
     """Retorna (cod_to_valor, is_sintetica).
 
     - Folhas: valor vem de result_by_chave via chave do item.
-    - Sintéticas: valor = soma dos filhos diretos (bottom-up por nível).
+    - Sintéticas: valor = soma recursiva dos filhos (independe do campo `nivel`).
     """
     children: dict[str, list[str]] = defaultdict(list)
     for item in itens:
@@ -37,13 +37,23 @@ def _compute_hierarquia(itens, get_chave_fn, result_by_chave: dict) -> tuple[dic
         for item in itens
     }
 
-    # Propaga bottom-up: do maior nível para o menor
-    for item in sorted(itens, key=lambda x: x.nivel, reverse=True):
-        if is_sintetica[item.cod]:
-            cod_to_valor[item.cod] = sum(
-                (cod_to_valor.get(c, Decimal("0")) for c in children[item.cod]),
+    # Propagação bottom-up via recursão com memoização —
+    # garante ordem correta independente dos valores de `nivel`.
+    computed: set[str] = set()
+
+    def _resolve(cod: str) -> Decimal:
+        if cod in computed:
+            return cod_to_valor[cod]
+        if is_sintetica[cod]:
+            cod_to_valor[cod] = sum(
+                (_resolve(c) for c in children[cod]),
                 Decimal("0"),
             )
+        computed.add(cod)
+        return cod_to_valor[cod]
+
+    for item in itens:
+        _resolve(item.cod)
 
     return cod_to_valor, is_sintetica
 
